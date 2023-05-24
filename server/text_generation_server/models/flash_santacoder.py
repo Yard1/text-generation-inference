@@ -68,7 +68,6 @@ class FlashSantacoderSharded(FlashCausalLM):
             world_size=world_size,
         )
 
-
     def decode(self, generated_ids: List[int]) -> str:
         # Do not skip special tokens as they are used for custom parsing rules of the generated text
         return self.tokenizer.decode(

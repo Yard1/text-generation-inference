@@ -89,17 +89,29 @@ def get_model(
     trust_remote_code: bool,
 ) -> Model:
     if "facebook/galactica" in model_id:
-        return GalacticaSharded(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+        return GalacticaSharded(
+            model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code
+        )
 
     if model_id.startswith("bigcode/"):
         if FLASH_ATTENTION:
-            return FlashSantacoderSharded(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+            return FlashSantacoderSharded(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
+            )
         elif sharded:
             raise NotImplementedError(
                 FLASH_ATT_ERROR_MESSAGE.format("Sharded Santacoder")
             )
         else:
-            return SantaCoder(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+            return SantaCoder(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
+            )
 
     config = AutoConfig.from_pretrained(
         model_id, revision=revision, trust_remote_code=trust_remote_code
@@ -108,37 +120,69 @@ def get_model(
 
     if model_type == "gpt_bigcode":
         if FLASH_ATTENTION:
-            return FlashSantacoderSharded(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+            return FlashSantacoderSharded(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
+            )
         elif sharded:
             raise NotImplementedError(
                 FLASH_ATT_ERROR_MESSAGE.format("Sharded Santacoder")
             )
         else:
-            return SantaCoder(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+            return SantaCoder(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
+            )
 
     if model_type == "bloom":
-        return BLOOMSharded(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+        return BLOOMSharded(
+            model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code
+        )
 
     elif model_type == "gpt_neox":
         if FLASH_ATTENTION or shard:
-            return FlashNeoXSharded(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
-        elif sharded:
-            raise NotImplementedError(
-                FLASH_ATT_ERROR_MESSAGE.format("Sharded Neox")
+            return FlashNeoXSharded(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
             )
+        elif sharded:
+            raise NotImplementedError(FLASH_ATT_ERROR_MESSAGE.format("Sharded Neox"))
         else:
-            return CausalLM(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+            return CausalLM(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
+            )
 
     elif model_type == "llama":
         if FLASH_ATTENTION:
-            return FlashLlama(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+            return FlashLlama(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
+            )
         elif sharded:
             raise NotImplementedError(FLASH_ATT_ERROR_MESSAGE.format("Sharded Llama"))
         else:
-            return CausalLM(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+            return CausalLM(
+                model_id,
+                revision,
+                quantize=quantize,
+                trust_remote_code=trust_remote_code,
+            )
 
     elif config.model_type == "opt":
-        return OPTSharded(model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code)
+        return OPTSharded(
+            model_id, revision, quantize=quantize, trust_remote_code=trust_remote_code
+        )
 
     elif model_type == "t5":
         if sharded:
