@@ -3,7 +3,7 @@ import torch
 from dataclasses import dataclass
 from opentelemetry import trace
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, PreTrainedTokenizerBase
-from typing import Optional, Tuple, List, Type, Dict
+from typing import Optional, Tuple, List, Type, Dict, Set
 
 from text_generation_server.models import Model
 from text_generation_server.models.types import (
@@ -586,9 +586,9 @@ class Seq2SeqLM(Model):
         )
 
     @tracer.start_as_current_span("generate_token")
-    def generate_token(
+    def generate_token_with_stopped(
         self, batch: Seq2SeqLMBatch
-    ) -> Tuple[List[Generation], Optional[Seq2SeqLMBatch]]:
+    ) -> Tuple[List[Generation], Optional[Seq2SeqLMBatch], Set[int]]:
         if batch.decoder_attention_mask is not None:
             # slice to the correct shape
             decoder_attention_mask = batch.decoder_attention_mask[
@@ -615,7 +615,7 @@ class Seq2SeqLM(Model):
 
         # Finished requests
         generations: List[Generation] = []
-        stopped = True
+        stopped: Set[int] = set()
 
         # Zipped iterator
         iterator = zip(
@@ -663,8 +663,8 @@ class Seq2SeqLM(Model):
             # Evaluate stopping criteria
             stop, reason = stopping_criteria(next_token_id, next_token_text)
 
-            if not stop:
-                stopped = False
+            if stop:
+                stopped.add(request.id)
 
             # Shard generations
             # All generations will be appended in the rust sharded client
@@ -723,8 +723,8 @@ class Seq2SeqLM(Model):
             )
 
         # We finished all generations in the batch; there is no next batch
-        if stopped:
-            return generations, None
+        if len(stopped) == len(batch):
+            return generations, None, stopped
 
         # We don't need input_ids after the prefill forward
         batch.input_ids = None
@@ -735,4 +735,4 @@ class Seq2SeqLM(Model):
             batch.decoder_attention_mask[:, -batch.padding_right_offset] = 1
         batch.padding_right_offset -= 1
 
-        return generations, batch
+        return generations, batch, stopped

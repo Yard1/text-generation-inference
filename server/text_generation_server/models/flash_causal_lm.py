@@ -8,7 +8,7 @@ import numpy as np
 from dataclasses import dataclass
 from opentelemetry import trace
 from transformers import PreTrainedTokenizerBase
-from typing import Optional, Tuple, List, Type, Union, Dict
+from typing import Optional, Tuple, List, Type, Union, Dict, Set
 
 from text_generation_server.models import Model
 from text_generation_server.models.types import (
@@ -793,9 +793,9 @@ class FlashCausalLM(Model):
         )
 
     @tracer.start_as_current_span("generate_token")
-    def generate_token(
+    def generate_token_with_stopped(
         self, batch: FlashCausalLMBatch
-    ) -> Tuple[List[Generation], Optional[FlashCausalLMBatch]]:
+    ) -> Tuple[List[Generation], Optional[FlashCausalLMBatch], Set[int]]:
         prefill = batch.cu_seqlen_prefill is not None
         prefill_logprobs = batch.prefill_next_token_indices is not None
 
@@ -848,7 +848,7 @@ class FlashCausalLM(Model):
 
         # Results
         generations: List[Generation] = []
-        stopped = True
+        stopped: Set[int] = set()
 
         # Zipped iterator
         iterator = zip(
@@ -958,8 +958,8 @@ class FlashCausalLM(Model):
                 next_token_text,
             )
 
-            if not stop:
-                stopped = False
+            if stop:
+                stopped.add(request.id)
 
             # Shard generations
             # All generations will be appended in the rust sharded client
@@ -1017,14 +1017,14 @@ class FlashCausalLM(Model):
             batch.read_offsets[i] = read_offset
             batch.all_input_ids[i] = all_input_ids
 
-        if stopped:
+        if len(stopped) == len(batch):
             del batch
             # No need to return a batch if we know that all requests stopped
-            return generations, None
+            return generations, None, stopped
 
         batch.prefill_cu_outlens = None
         batch.prefill_head_indices = None
         batch.prefill_next_token_indices = None
         batch.max_seqlen = batch.max_seqlen + 1
 
-        return generations, batch
+        return generations, batch, stopped

@@ -4,7 +4,7 @@ import inspect
 from dataclasses import dataclass
 from opentelemetry import trace
 from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedTokenizerBase
-from typing import Optional, Tuple, List, Type, Dict
+from typing import Optional, Tuple, List, Type, Dict, Set
 
 from text_generation_server.models import Model
 from text_generation_server.models.types import (
@@ -532,9 +532,9 @@ class CausalLM(Model):
         return outputs.logits, outputs.past_key_values
 
     @tracer.start_as_current_span("generate_token")
-    def generate_token(
+    def generate_token_with_stopped(
         self, batch: CausalLMBatch
-    ) -> Tuple[List[Generation], Optional[CausalLMBatch]]:
+    ) -> Tuple[List[Generation], Optional[CausalLMBatch], Set[int]]:
         # slice the attention mask to the correct shape
         attention_mask = batch.attention_mask[:, : -batch.padding_right_offset]
 
@@ -547,7 +547,7 @@ class CausalLM(Model):
 
         # Results
         generations: List[Generation] = []
-        stopped = True
+        stopped: Set[int] = set()
 
         # Zipped iterator
         iterator = zip(
@@ -594,8 +594,8 @@ class CausalLM(Model):
                 next_token_text,
             )
 
-            if not stop:
-                stopped = False
+            if stop:
+                stopped.add(request.id)
 
             # Shard generations
             # All generations will be appended in the rust sharded client
@@ -658,8 +658,8 @@ class CausalLM(Model):
             batch.max_input_length = max(batch.max_input_length, new_input_length)
 
         # We finished all generations in the batch; there is no next batch
-        if stopped:
-            return generations, None
+        if len(stopped) == len(batch):
+            return generations, None, stopped
 
         # Slice unused values from prefill
         batch.input_ids = batch.input_ids[:, :1]
@@ -675,4 +675,4 @@ class CausalLM(Model):
         # Update past key values
         batch.past_key_values = past
 
-        return generations, batch
+        return generations, batch, stopped
