@@ -20,6 +20,7 @@ from text_generation_server.utils.layers import (
 )
 from safetensors import SafetensorError
 
+
 def load_multi_mqa(
     config, prefix: str, weights, bias: bool, head_size, num_heads, hidden_size
 ):
@@ -75,9 +76,10 @@ def _load_multi_mqa_gptq(
 
         g_idx = weights.get_tensor(f"{prefix}.c_attn.g_idx")
         g_idx = g_idx.to(device=weights.device)
-        bits, groupsize = weights._get_gptq_qparams()
+        bits, groupsize = weights._get_gptq_params()
 
         from text_generation_server.utils.layers import HAS_EXLLAMA
+
         use_exllama = HAS_EXLLAMA
         weight = (qweight, qzeros, scales, g_idx, bits, groupsize, use_exllama)
 

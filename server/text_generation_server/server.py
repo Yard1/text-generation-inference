@@ -16,7 +16,6 @@ from text_generation_server.pb import generate_pb2_grpc, generate_pb2
 from text_generation_server.tracing import UDSOpenTelemetryAioServerInterceptor
 
 
-
 class TextGenerationService(generate_pb2_grpc.TextGenerationServiceServicer):
     def __init__(self, model: Model, cache: Cache, server_urls: List[str]):
         self.cache = cache
@@ -106,21 +105,21 @@ class TextGenerationService(generate_pb2_grpc.TextGenerationServiceServicer):
 
 
 def serve(
-    model_id: str,
-    revision: Optional[str],
-    sharded: bool,
-    quantize: Optional[str],
-    dtype: Optional[str],
-    trust_remote_code: bool,
-    uds_path: Path,
-):
-    async def serve_inner(
         model_id: str,
         revision: Optional[str],
-        sharded: bool = False,
-        quantize: Optional[str] = None,
-        dtype: Optional[str] = None,
-        trust_remote_code: bool = False,
+        sharded: bool,
+        quantize: Optional[str],
+        dtype: Optional[str],
+        trust_remote_code: bool,
+        uds_path: Path,
+):
+    async def serve_inner(
+            model_id: str,
+            revision: Optional[str],
+            sharded: bool = False,
+            quantize: Optional[str] = None,
+            dtype: Optional[str] = None,
+            trust_remote_code: bool = False,
     ):
         unix_socket_template = "unix://{}-{}"
         if sharded:
@@ -146,7 +145,12 @@ def serve(
                 # When using GPTQ, Exllama kernels need some global kernels
                 # For which we have the finale shapes only after the model has loaded
                 # This will allocate those buffers.
-                from text_generation_server.utils.gptq.exllama import create_exllama_buffers
+                from text_generation_server.utils.gptq.exllama import (
+                    create_exllama_buffers,
+                    set_device,
+                )
+
+                set_device(model.device)
                 create_exllama_buffers()
             except ImportError:
                 pass
