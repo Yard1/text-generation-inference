@@ -2,7 +2,7 @@ import inspect
 import torch
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Optional, TypeVar, Type
+from typing import List, Tuple, Optional, TypeVar, Type, Set
 from transformers import PreTrainedTokenizerBase, PretrainedConfig
 
 from text_generation_server.models.types import Batch, GeneratedText
@@ -51,8 +51,14 @@ class Model(ABC):
     def batch_type(self) -> Type[B]:
         raise NotImplementedError
 
+    def generate_token(
+        self, batch: B
+    ) -> Tuple[List[GeneratedText], Optional[B]]:
+        generation, batch, _ = self.generate_token_with_stopped(batch)
+        return generation, batch
+
     @abstractmethod
-    def generate_token(self, batch: B) -> Tuple[List[GeneratedText], Optional[B]]:
+    def generate_token_with_stopped(self, batch: B) -> Tuple[List[GeneratedText], Optional[B], Set[int]]:
         raise NotImplementedError
 
     def warmup(self, batch: B) -> Optional[int]:
