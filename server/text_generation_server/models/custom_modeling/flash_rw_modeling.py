@@ -225,6 +225,7 @@ class FlashRWAttention(torch.nn.Module):
                 input_lengths,
                 block_size,
                 max_s,
+                None,
             )
 
         return self.dense(attn_output.view(-1, self.num_heads * self.head_size))
@@ -345,6 +346,7 @@ class FlashRWLargeAttention(torch.nn.Module):
                 input_lengths,
                 block_size,
                 max_s,
+                None,
             )
 
         return self.dense(

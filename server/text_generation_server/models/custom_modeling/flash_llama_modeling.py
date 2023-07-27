@@ -281,6 +281,7 @@ class FlashLlamaAttention(torch.nn.Module):
                 input_lengths,
                 block_size,
                 max_s,
+                None,
             )
 
         return self.o_proj(attn_output.view(-1, self.num_heads * self.head_size))
