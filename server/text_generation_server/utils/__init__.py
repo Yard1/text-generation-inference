@@ -1,3 +1,4 @@
+from text_generation_server.utils.bnb import get_bnb_kwargs
 from text_generation_server.utils.convert import convert_file, convert_files
 from text_generation_server.utils.dist import initialize_torch_distributed
 from text_generation_server.utils.weights import Weights
@@ -20,6 +21,7 @@ from text_generation_server.utils.tokens import (
 )
 
 __all__ = [
+    "get_bnb_kwargs",
     "convert_file",
     "convert_files",
     "initialize_torch_distributed",

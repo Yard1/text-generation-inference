@@ -5,6 +5,7 @@ from typing import Optional, List
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from text_generation_server.models import CausalLM
+from text_generation_server.utils import get_bnb_kwargs
 
 FIM_PREFIX = "<fim-prefix>"
 FIM_MIDDLE = "<fim-middle>"
@@ -56,8 +57,8 @@ class SantaCoder(CausalLM):
                 model_id,
                 revision=revision,
                 torch_dtype=dtype,
-                load_in_8bit=quantize == "bitsandbytes",
                 trust_remote_code=trust_remote_code,
+                **get_bnb_kwargs(quantize, dtype)
             )
 
         super(CausalLM, self).__init__(

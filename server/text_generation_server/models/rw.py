@@ -4,6 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from typing import List, Optional, Tuple
 
 from text_generation_server.models import CausalLM
+from text_generation_server.utils import get_bnb_kwargs
 
 
 class RW(CausalLM):
@@ -41,6 +42,7 @@ class RW(CausalLM):
             else None,
             load_in_8bit=quantize == "bitsandbytes",
             trust_remote_code=trust_remote_code,
+            **get_bnb_kwargs(quantize, dtype)
         )
         if torch.cuda.is_available() and torch.cuda.device_count() == 1:
             model = model.cuda()

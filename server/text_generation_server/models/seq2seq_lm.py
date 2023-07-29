@@ -13,7 +13,12 @@ from text_generation_server.models.types import (
     PrefillTokens,
 )
 from text_generation_server.pb import generate_pb2
-from text_generation_server.utils import NextTokenChooser, StoppingCriteria, Sampling
+from text_generation_server.utils import (
+    NextTokenChooser,
+    StoppingCriteria,
+    Sampling,
+    get_bnb_kwargs,
+)
 
 tracer = trace.get_tracer(__name__)
 
@@ -524,8 +529,8 @@ class Seq2SeqLM(Model):
             device_map="auto"
             if torch.cuda.is_available() and torch.cuda.device_count() > 1
             else None,
-            load_in_8bit=quantize == "bitsandbytes",
             trust_remote_code=trust_remote_code,
+            **get_bnb_kwargs(quantize, dtype)
         )
         if torch.cuda.is_available() and torch.cuda.device_count() == 1:
             model = model.cuda()
