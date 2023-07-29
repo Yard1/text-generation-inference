@@ -527,7 +527,7 @@ class Seq2SeqLM(Model):
             revision=revision,
             torch_dtype=dtype,
             device_map="auto"
-            if torch.cuda.is_available() and torch.cuda.device_count() > 1
+            if torch.cuda.is_available()
             else None,
             trust_remote_code=trust_remote_code,
             **get_bnb_kwargs(quantize, dtype)
