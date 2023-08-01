@@ -715,31 +715,18 @@ class FlashCausalLM(Model):
     def warmup(self, batch: FlashCausalLMBatch, max_total_tokens: Optional[int]=None):
         global CACHE_MANAGER
 
-        if max_total_tokens:
-            del CACHE_MANAGER
-            del batch
-            gc.collect()
-            torch.cuda.empty_cache()
-
-            num_blocks = math.ceil(max_total_tokens / BLOCK_SIZE)
-
-            CACHE_MANAGER = CacheManager(
-                num_blocks,
-                self.num_layers,
-                self.num_kv_heads,
-                self.head_size,
-                self.dtype,
-                self.device,
-            )
-
-            return int(num_blocks * BLOCK_SIZE)
-
+        del CACHE_MANAGER
         gc.collect()
         torch.cuda.empty_cache()
 
         try:
+            if max_total_tokens:
+                num_blocks = math.ceil(max_total_tokens / BLOCK_SIZE)
+            else:
+                num_blocks = batch.blocks
+
             CACHE_MANAGER = CacheManager(
-                batch.blocks,
+                num_blocks,
                 self.num_layers,
                 self.num_kv_heads,
                 self.head_size,
@@ -752,6 +739,9 @@ class FlashCausalLM(Model):
                 f"Not enough memory to handle {len(batch.input_ids)} prefill tokens. "
                 f"You need to decrease `--max-batch-prefill-tokens`"
             ) from e
+
+        if max_total_tokens:
+            return int(num_blocks * BLOCK_SIZE)
 
         torch.cuda.synchronize(self.device)
 
