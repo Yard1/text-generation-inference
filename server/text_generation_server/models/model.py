@@ -61,7 +61,7 @@ class Model(ABC):
     def generate_token_with_stopped(self, batch: B) -> Tuple[List[GeneratedText], Optional[B], Set[int]]:
         raise NotImplementedError
 
-    def warmup(self, batch: B) -> Optional[int]:
+    def warmup(self, batch: B, max_total_tokens: Optional[int]=None) -> Optional[int]:
         self.generate_token(batch)
         return None
 

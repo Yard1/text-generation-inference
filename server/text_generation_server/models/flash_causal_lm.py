@@ -712,11 +712,31 @@ class FlashCausalLM(Model):
     def batch_type(self) -> Type[FlashCausalLMBatch]:
         return FlashCausalLMBatch
 
-    def warmup(self, batch: FlashCausalLMBatch):
+    def warmup(self, batch: FlashCausalLMBatch, max_total_tokens: Optional[int]=None):
         global CACHE_MANAGER
+
+        if max_total_tokens:
+            del CACHE_MANAGER
+            del batch
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            num_blocks = math.ceil(max_total_tokens / BLOCK_SIZE)
+
+            CACHE_MANAGER = CacheManager(
+                num_blocks,
+                self.num_layers,
+                self.num_kv_heads,
+                self.head_size,
+                self.dtype,
+                self.device,
+            )
+
+            return int(num_blocks * BLOCK_SIZE)
 
         gc.collect()
         torch.cuda.empty_cache()
+
         try:
             CACHE_MANAGER = CacheManager(
                 batch.blocks,
