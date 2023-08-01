@@ -1,3 +1,4 @@
+import gc
 import math
 import itertools
 import torch
@@ -714,6 +715,7 @@ class FlashCausalLM(Model):
     def warmup(self, batch: FlashCausalLMBatch):
         global CACHE_MANAGER
 
+        gc.collect()
         torch.cuda.empty_cache()
         try:
             CACHE_MANAGER = CacheManager(
@@ -754,6 +756,7 @@ class FlashCausalLM(Model):
 
         del CACHE_MANAGER
         del batch
+        gc.collect()
         torch.cuda.empty_cache()
 
         CACHE_MANAGER = CacheManager(
