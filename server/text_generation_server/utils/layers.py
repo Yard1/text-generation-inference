@@ -426,11 +426,22 @@ try:
     from flash_attn.layers.rotary import RotaryEmbedding
     import rotary_emb
 
+    def _inv_freq(base, device, dim, dtype=torch.float32):
+        return 1.0 / (
+            base
+            ** (torch.arange(0, dim, 2, device=device, dtype=dtype) / dim)
+        )
+
     class PositionRotaryEmbedding(nn.Module):
-        def __init__(self, inv_freq):
+        def __init__(self, inv_freq, dim, max_position_embeddings=2048, base=10000.0, scaling_factor=1.0, dynamic=False):
             super().__init__()
 
             self.inv_freq = inv_freq
+            self.dim = dim
+            self.max_position_embeddings = max_position_embeddings
+            self.base = base
+            self.scaling_factor = scaling_factor or 1.0
+            self.dynamic = dynamic
             self._seq_len_cached = 0
             self._cos_cached = None
             self._sin_cached = None
@@ -438,21 +449,45 @@ try:
             self._sin_k_cached = None
 
         @classmethod
-        def static(cls, dim, base, device):
-            inv_freq = 1.0 / (
-                base
-                ** (torch.arange(0, dim, 2, device=device, dtype=torch.float32) / dim)
+        def static(cls, config, dim, device, base=10000.0):
+            inv_freq = _inv_freq(base, device, dim)
+            rope_config = getattr(config, "rope_scaling", None)
+            scaling_factor = rope_config.get("factor", 1.0) if rope_config else 1.0
+            max_position_embeddings = config.max_position_embeddings
+            dynamic = False
+            if rope_config:
+                scaling_type = rope_config["type"]
+                if scaling_type not in ("dynamic", "linear"):
+                    raise ValueError(f"Unknown RoPE scaling type {scaling_type}")
+                if scaling_type == "dynamic":
+                    dynamic = True
+            return cls(
+                inv_freq,
+                dim=dim,
+                max_position_embeddings=max_position_embeddings,
+                base=base,
+                scaling_factor=scaling_factor,
+                dynamic=dynamic
             )
-            return cls(inv_freq)
 
         @classmethod
-        def load(cls, prefix, weights):
+        def load(cls, config, prefix, weights):
             # XXX: Always load this in float32 !
             dtype = weights.dtype
             weights.dtype = torch.float32
             inv_freq = weights.get_tensor(f"{prefix}.inv_freq")
             weights.dtype = dtype
-            return cls(inv_freq)
+
+            dim = config.hidden_size // config.num_attention_heads
+            return cls.static(config, dim, inv_freq.device)
+
+        # Adapted from https://github.com/huggingface/transformers/pull/24653
+        def _update_inv_freq(self, dtype, device, seqlen):
+            if self.dynamic and seqlen > self.max_position_embeddings:
+                base = self.base * (
+                    (self.scaling_factor * seqlen / self.max_position_embeddings) - (self.scaling_factor - 1)
+                ) ** (self.dim / (self.dim - 2))
+                self.inv_freq = _inv_freq(base, device, self.dim, dtype)
 
         def _update_cos_sin_cache(self, dtype, device, seqlen):
             # Reset the tables if the sequence length has changed,
@@ -462,8 +497,10 @@ try:
                 or self._cos_cached.device != device
                 or self._cos_cached.dtype != dtype
             ):
+                self._update_inv_freq(dtype, device, seqlen)
                 self._seq_len_cached = seqlen
                 t = torch.arange(seqlen, device=device, dtype=self.inv_freq.dtype)
+                t /= self.scaling_factor
                 # Don't do einsum, it converts fp32 to fp16
                 # freqs = torch.einsum("i,j->ij", t, self.inv_freq)
                 freqs = torch.outer(t, self.inv_freq.to(device=t.device))
