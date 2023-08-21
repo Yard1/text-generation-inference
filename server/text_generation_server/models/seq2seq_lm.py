@@ -1,3 +1,4 @@
+import time
 import torch
 
 from dataclasses import dataclass
@@ -594,6 +595,8 @@ class Seq2SeqLM(Model):
     def generate_token_with_stopped(
         self, batch: Seq2SeqLMBatch
     ) -> Tuple[List[Generation], Optional[Seq2SeqLMBatch], Set[int]]:
+        generation_start_time = time.monotonic()
+
         if batch.decoder_attention_mask is not None:
             # slice to the correct shape
             decoder_attention_mask = batch.decoder_attention_mask[
@@ -711,6 +714,7 @@ class Seq2SeqLM(Model):
                     next_token_text,
                     next_token_id_squeezed.item() in self.all_special_ids,
                     generated_text,
+                    time.monotonic() - generation_start_time,
                 )
 
                 generations.append(generation)

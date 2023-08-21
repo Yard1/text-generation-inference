@@ -1,3 +1,4 @@
+import time
 import torch
 import inspect
 
@@ -540,6 +541,8 @@ class CausalLM(Model):
     def generate_token_with_stopped(
         self, batch: CausalLMBatch
     ) -> Tuple[List[Generation], Optional[CausalLMBatch], Set[int]]:
+        generation_start_time = time.monotonic()
+
         # slice the attention mask to the correct shape
         attention_mask = batch.attention_mask[:, : -batch.padding_right_offset]
 
@@ -650,6 +653,7 @@ class CausalLM(Model):
                     next_token_text,
                     next_token_id_squeezed.item() in self.all_special_ids,
                     generated_text,
+                    time.monotonic() - generation_start_time,
                 )
 
                 generations.append(generation)

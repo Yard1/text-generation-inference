@@ -1,6 +1,7 @@
 import gc
 import math
 import itertools
+import time
 import torch
 import torch.distributed
 
@@ -815,6 +816,8 @@ class FlashCausalLM(Model):
     def generate_token_with_stopped(
         self, batch: FlashCausalLMBatch
     ) -> Tuple[List[Generation], Optional[FlashCausalLMBatch], Set[int]]:
+        generation_start_time = time.monotonic()
+
         prefill = batch.cu_seqlen_prefill is not None
         prefill_logprobs = batch.prefill_next_token_indices is not None
 
@@ -1026,6 +1029,7 @@ class FlashCausalLM(Model):
                     next_token_text,
                     next_token_id in self.all_special_ids,
                     generated_text,
+                    time.monotonic() - generation_start_time,
                 )
 
                 generations.append(generation)
