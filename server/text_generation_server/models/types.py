@@ -80,7 +80,7 @@ class Generation:
     token_text: str
     token_is_special: bool
     generated_text: Optional[GeneratedText]
-    generation_time_s: float
+    generation_time_s: Optional[float] = None
 
     def to_pb(self) -> generate_pb2.Generation:
         return generate_pb2.Generation(
