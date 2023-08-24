@@ -186,13 +186,18 @@ class FlashLlamaAttention(torch.nn.Module):
         self.num_heads = config.num_attention_heads
         self.hidden_size = config.hidden_size
         self.head_size = self.hidden_size // self.num_heads
+        # Requires transformers > 4.32.0
+        try:
+            rope_theta = config.rope_theta
+        except AttributeError:
+            rope_theta = 10000.0
         try:
             self.rotary_emb = PositionRotaryEmbedding.load(
                 prefix=f"{prefix}.rotary_emb", weights=weights, config=config
             )
         except RuntimeError:
             self.rotary_emb = PositionRotaryEmbedding.static(
-                dim=self.head_size, base=config.rope_theta, device=weights.device, config=config
+                dim=self.head_size, base=rope_theta, device=weights.device, config=config
             )
 
         self.softmax_scale = self.head_size**-0.5
