@@ -468,7 +468,12 @@ try:
         @classmethod
         def load(cls, config, prefix, weights):
             # XXX: Always load this in float32 !
-            inv_freq = weights.get_tensor(f"{prefix}.inv_freq", dtype=torch.float32)
+            dtype = weights.dtype
+            weights.dtype = torch.float32
+            try:
+                inv_freq = weights.get_tensor(f"{prefix}.inv_freq")
+            finally:
+                weights.dtype = dtype
 
             dim = config.hidden_size // config.num_attention_heads
             return cls.static(config, dim, inv_freq.device)

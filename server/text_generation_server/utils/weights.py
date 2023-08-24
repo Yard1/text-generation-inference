@@ -61,15 +61,14 @@ class Weights:
     def get_shape(self, tensor_name: str):
         return self._get_slice(tensor_name).get_shape()
 
-    def get_tensor(self, tensor_name: str, *, dtype: Optional[torch.dtype] = None):
+    def get_tensor(self, tensor_name: str):
         filename, tensor_name = self.get_filename(tensor_name)
         f = self._get_handle(filename)
         tensor = f.get_tensor(tensor_name)
         # Special case for gptq which shouldn't convert
         # u4 which are disguised as int32
         if tensor.dtype not in [torch.int32, torch.int64]:
-            dtype = dtype or self.dtype
-            tensor = tensor.to(dtype=dtype)
+            tensor = tensor.to(dtype=self.dtype)
         tensor = tensor.to(device=self.device)
         return tensor
 
